@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Snake by Sakib</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --neon-green: #00ff88;
+      --neon-red: #ff2a6d;
+      --bg-dark: #0a0a0a;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg-dark);
+      color: var(--neon-green);
+      font-family: 'Courier New', monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    h1 {
+      margin-top: 10px;
+      font-size: 1.5em;
+      letter-spacing: 2px;
+      color: var(--neon-green);
+      text-shadow: 0 0 8px var(--neon-green);
+    }
+
+    #score {
+      margin: 5px 0;
+      font-size: 1.2em;
+      text-shadow: 0 0 4px var(--neon-green);
+    }
+
+    canvas {
+      background: #111;
+      border: 2px solid var(--neon-green);
+      box-shadow: 0 0 15px var(--neon-green);
+    }
+
+    .controls {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: 80px 80px 80px;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .btn {
+      background: transparent;
+      border: 2px solid var(--neon-green);
+      color: var(--neon-green);
+      font-size: 18px;
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+      text-shadow: 0 0 4px var(--neon-green);
+      box-shadow: 0 0 10px var(--neon-green);
+      user-select: none;
+    }
+
+    .btn:active {
+      background-color: var(--neon-green);
+      color: #000;
+      box-shadow: 0 0 20px var(--neon-green);
+    }
+
+    @media (max-width: 500px) {
+      canvas {
+        width: 90vw;
+        height: 90vw;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>🐍 Snake by Sakib</h1>
+  <div id="score">Score: 0</div>
+  <canvas id="game" width="400" height="400"></canvas>
+
+  <div class="controls">
+    <div></div>
+    <div class="btn" onclick="setDirection('UP')">▲</div>
+    <div></div>
+    <div class="btn" onclick="setDirection('LEFT')">◀</div>
+    <div class="btn" onclick="setDirection('DOWN')">▼</div>
+    <div class="btn" onclick="setDirection('RIGHT')">▶</div>
+  </div>
+
+  <audio id="eat-sound" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAD4AAP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A"></audio>
+  <audio id="die-sound" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAD4AAAD8APwA/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A/wD/AP8A"></audio>
+
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const scoreDisplay = document.getElementById("score");
+
+    const eatSound = document.getElementById("eat-sound");
+    const dieSound = document.getElementById("die-sound");
+
+    const box = 20;
+    const canvasSize = 20;
+    let score = 0;
+    let direction = "RIGHT";
+    let gameSpeed = 200;
+    let gameInterval;
+
+    // Snake starts with 3 blocks
+    let snake = [
+      { x: 9 * box, y: 10 * box },
+      { x: 8 * box, y: 10 * box },
+      { x: 7 * box, y: 10 * box },
+    ];
+
+    let food = randomFood();
+
+    function setDirection(dir) {
+      if (dir === "LEFT" && direction !== "RIGHT") direction = "LEFT";
+      else if (dir === "UP" && direction !== "DOWN") direction = "UP";
+      else if (dir === "RIGHT" && direction !== "LEFT") direction = "RIGHT";
+      else if (dir === "DOWN" && direction !== "UP") direction = "DOWN";
+    }
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowLeft") setDirection("LEFT");
+      if (event.key === "ArrowUp") setDirection("UP");
+      if (event.key === "ArrowRight") setDirection("RIGHT");
+      if (event.key === "ArrowDown") setDirection("DOWN");
+    });
+
+    function randomFood() {
+      let food;
+      do {
+        food = {
+          x: Math.floor(Math.random() * canvasSize) * box,
+          y: Math.floor(Math.random() * canvasSize) * box,
+        };
+      } while (snake.some((segment) => segment.x === food.x && segment.y === food.y));
+      return food;
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Watermark
+      ctx.fillStyle = "#0f0";
+      ctx.font = "12px monospace";
+      ctx.fillText("Created by Sakib 🐍", 10, canvas.height - 10);
+
+      // Snake
+      for (let i = 0; i < snake.length; i++) {
+        ctx.fillStyle = i === 0 ? "#00ff88" : "#007744";
+        ctx.fillRect(snake[i].x, snake[i].y, box, box);
+      }
+
+      // Food
+      ctx.fillStyle = "#ff2a6d";
+      ctx.fillRect(food.x, food.y, box, box);
+
+      let headX = snake[0].x;
+      let headY = snake[0].y;
+
+      if (direction === "LEFT") headX -= box;
+      if (direction === "RIGHT") headX += box;
+      if (direction === "UP") headY -= box;
+      if (direction === "DOWN") headY += box;
+
+      if (
+        headX < 0 || headX >= canvas.width ||
+        headY < 0 || headY >= canvas.height ||
+        snake.some(seg => seg.x === headX && seg.y === headY)
+      ) {
+        clearInterval(gameInterval);
+        dieSound.play();
+        setTimeout(() => {
+          alert(`💀 Game Over, Brat! Your Score: ${score}`);
+          location.reload();
+        }, 300);
+        return;
+      }
+
+      let newHead = { x: headX, y: headY };
+
+      if (headX === food.x && headY === food.y) {
+        score++;
+        eatSound.play();
+        scoreDisplay.textContent = "Score: " + score;
+        food = randomFood();
+        if (gameSpeed > 50) {
+          gameSpeed -= 10;
+          clearInterval(gameInterval);
+          gameInterval = setInterval(draw, gameSpeed);
+        }
+      } else {
+        snake.pop();
+      }
+
+      snake.unshift(newHead);
+    }
+
+    gameInterval = setInterval(draw, gameSpeed);
+  </script>
+</body>
+</html>
